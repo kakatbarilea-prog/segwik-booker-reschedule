@@ -1,1 +1,760 @@
 
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reschedule Meeting</title>
+  <style>
+    :root{
+      --blue:#14699F;
+      --blue-ink:#0b3f66;
+      --bg:#ffffff;
+      --ink:#0f172a;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --shadow: 0 10px 25px rgba(2, 8, 23, .08);
+      --radius: 16px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+      background:#fff;
+      color:var(--ink);
+    }
+
+    /* Page frame */
+    .app{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      background:var(--bg);
+    }
+
+    .topbar{
+      height:64px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:sticky;
+      top:0;
+      z-index:10;
+      background:var(--bg);
+      border-bottom:1px solid var(--line);
+    }
+    .topbar .back{
+      position:absolute;
+      left:14px;
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      color:#111827;
+      border:1px solid transparent;
+      background:transparent;
+      cursor:pointer;
+    }
+    .topbar .back:active{transform:translateY(1px)}
+    .topbar .title{
+      font-weight:600;
+      letter-spacing:.2px;
+    }
+
+    .wrap{
+      width:min(560px, 100%);
+      margin:0 auto;
+      padding:22px 18px 26px;
+    }
+
+    /* Screen transitions */
+    .screen{
+      display:none;
+      animation: fade .14s ease-out;
+    }
+    .screen.active{display:block}
+    @keyframes fade{
+      from{opacity:.4; transform:translateY(6px)}
+      to{opacity:1; transform:translateY(0)}
+    }
+
+    /* Buttons */
+    .btn{
+      appearance:none;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      border-radius:999px;
+      padding:12px 16px;
+      font-weight:600;
+      font-size:14.5px;
+      cursor:pointer;
+      transition:transform .06s ease, background .15s ease, border-color .15s ease;
+      user-select:none;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.outline-blue{
+      border-color:rgba(20,105,159,.55);
+      color:var(--blue-ink);
+      background:rgba(20,105,159,.04);
+    }
+    .btn.primary{
+      border-color:transparent;
+      background:var(--blue);
+      color:#fff;
+      padding:14px 18px;
+    }
+    .btn.primary:hover{filter:brightness(.98)}
+    .btn.wide{
+      width:100%;
+      border-radius:12px;
+      padding:16px 18px;
+      font-size:15px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      box-shadow:0 6px 18px rgba(20,105,159,.18);
+    }
+    .btn.ghost{
+      border-color:transparent;
+      background:transparent;
+      color:var(--blue-ink);
+      padding:10px 12px;
+      font-weight:700;
+    }
+
+    .card{
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:#fff;
+      box-shadow: 0 6px 20px rgba(2,8,23,.05);
+      overflow:hidden;
+    }
+
+    /* Banner (uses your provided image URL) */
+    .banner{
+      height:168px;
+      border-radius:18px;
+      overflow:hidden;
+      border:1px solid var(--line);
+      background: url('https://d34hmiuaex7c0.cloudfront.net/2952/uploads/form_value_featured_1767649962307.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      position:relative;
+    }
+    .banner::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(180deg, rgba(0,0,0,.00) 35%, rgba(0,0,0,.22) 100%);
+      pointer-events:none;
+    }
+    .banner .tag{
+      position:absolute;
+      left:16px;
+      bottom:16px;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:10px 14px;
+      font-weight:800;
+      color:var(--blue-ink);
+      box-shadow: var(--shadow);
+      z-index:2;
+    }
+
+    .banner .dots span{
+      width:7px; height:7px;
+      border-radius:999px;
+      background:rgba(255,255,255,.55);
+    }
+    .banner .dots span.active{background:rgba(255,255,255,.95)}
+
+    .section-title{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin:18px 0 10px;
+      font-size:18px;
+      font-weight:700;
+    }
+    .icon{
+      width:28px;height:28px;border-radius:8px;
+      background:rgba(20,105,159,.10);
+      display:grid;place-items:center;
+      color:var(--blue-ink);
+    }
+
+    /* Detail blocks */
+    .info{
+      display:grid;
+      gap:10px;
+      margin:14px 0 16px;
+    }
+    .info .line{
+      display:flex;
+      gap:10px;
+      color:var(--muted);
+      font-size:14px;
+      align-items:flex-start;
+    }
+    .info .line b{
+      color:var(--ink);
+      font-weight:700;
+      min-width:118px;
+      display:inline-block;
+    }
+
+    /* Calendar / times */
+    .cal{
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:#fff;
+      box-shadow: 0 8px 22px rgba(2,8,23,.06);
+    }
+    .cal-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:10px;
+      font-weight:700;
+    }
+    .cal-head .nav{
+      width:34px;height:34px;border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      cursor:pointer;
+      display:grid;place-items:center;
+      user-select:none;
+    }
+    .dow{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:6px;
+      padding:6px 2px 10px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
+      font-weight:700;
+    }
+    .days{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:8px;
+      padding:2px;
+    }
+    .day{
+      height:36px;
+      border-radius:999px;
+      border:1px solid transparent;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      color:var(--ink);
+      font-weight:700;
+      font-size:13px;
+      background:#fff;
+    }
+    .day.muted{color:#cbd5e1; cursor:not-allowed}
+    .day:hover:not(.muted){background:rgba(20,105,159,.06)}
+    .day.selected{
+      background:rgba(59,130,246,.14);
+      border-color:rgba(59,130,246,.28);
+      color:var(--blue-ink);
+      font-weight:700;
+    }
+
+    .times-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin:14px 0 10px;
+      color:var(--muted);
+      font-weight:700;
+      font-size:13px;
+    }
+    .times{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+    }
+    .time{
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:10px 10px;
+      text-align:center;
+      background:#fff;
+      cursor:pointer;
+      font-weight:700;
+      font-size:12.5px;
+    }
+    .time.selected{
+      border-color:rgba(59,130,246,.40);
+      background:rgba(59,130,246,.10);
+      color:var(--blue-ink);
+    }
+    .hint{
+      color:var(--muted);
+      font-size:13px;
+      margin-top:10px;
+      line-height:1.45;
+    }
+
+    /* Form */
+    .form{
+      display:grid;
+      gap:12px;
+      margin-top:14px;
+    }
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width:420px){
+      .grid2{grid-template-columns:1fr}
+      .times{grid-template-columns:repeat(2,1fr)}
+    }
+    label{
+      font-size:12.5px;
+      color:var(--muted);
+      font-weight:700;
+      display:block;
+      margin:0 0 7px;
+    }
+    .field{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:12px 12px;
+      font-size:14px;
+      outline:none;
+      background:#fff;
+    }
+    .field:focus{
+      border-color:rgba(59,130,246,.45);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.10);
+    }
+    textarea.field{
+      min-height:110px;
+      resize:vertical;
+    }
+
+    .actions{
+      margin-top:18px;
+      display:grid;
+      gap:10px;
+    }
+
+    .successMark{
+      width:72px;height:72px;border-radius:999px;
+      display:grid;place-items:center;
+      background:rgba(16,185,129,.12);
+      color:#065f46;
+      margin:14px auto 10px;
+      border:1px solid rgba(16,185,129,.22);
+      font-size:34px;
+      font-weight:700;
+    }
+    .h1{
+      text-align:center;
+      font-size:26px;
+      line-height:1.15;
+      margin:10px 0 6px;
+      font-weight:700;
+    }
+    .sub{
+      text-align:center;
+      color:var(--muted);
+      font-size:14.5px;
+      margin:0 0 18px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="topbar">
+      <button class="back" id="backBtn" aria-label="Back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="title" id="hostName">Pete Romano</div>
+    </div>
+
+    <div class="wrap">
+
+      <!-- START: go straight to reschedule step -->
+      <section class="screen active" data-screen="resched_01">
+        <div class="banner" aria-hidden="true">
+          <div class="tag">Virtual 1-1 Connect</div>
+          <div class="dots"><span class="active"></span><span></span><span></span></div>
+        </div>
+
+        <div class="section-title">
+          <div class="icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 3v3M17 3v3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M4 8h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M6 21h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M8 13h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          Choose a New Time
+        </div>
+
+        <div class="card" style="padding:14px; margin-bottom:12px">
+          <div style="font-weight:700; font-size:16px; margin-bottom:6px">Current booking</div>
+          <div class="info" style="margin:0">
+            <div class="line"><b>Meeting</b> <span id="rsTitle">Virtual 1-1 Connect</span></div>
+            <div class="line"><b>Current</b> <span id="rsCurrent">Thu, Feb 19 • 10:15 AM</span></div>
+            <div class="line"><b>Time zone</b> <span id="rsTz">America/New_York</span></div>
+          </div>
+        </div>
+
+        <div class="cal">
+          <div class="cal-head">
+            <button class="nav" id="prevMonthBtn" aria-label="Previous month">‹</button>
+            <div id="monthLabel">February 2026</div>
+            <button class="nav" id="nextMonthBtn" aria-label="Next month">›</button>
+          </div>
+
+          <div class="dow">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          </div>
+
+          <div class="days" id="daysGrid"></div>
+
+<div class="times-head" id="timesHead" style="display:none">
+  <div>Available Times</div>
+  <div id="selectedDateLabel">—</div>
+</div>
+
+<div class="times" id="timesGrid" style="display:none"></div>
+
+
+          <div class="hint">
+            Pick a day and time, then confirm. You can add a note for the host before submitting.
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary wide" id="rsNextBtn" disabled style="opacity:.55">
+            Next →
+          </button>
+          <button class="btn ghost" id="doneBtn0">Done</button>
+        </div>
+      </section>
+
+      <!-- Reschedule - details -->
+      <section class="screen" data-screen="resched_02">
+        <div class="section-title" style="margin-top:2px">
+          <div class="icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          Confirm Reschedule
+        </div>
+
+        <div class="card" style="padding:14px">
+          <div style="font-weight:700; font-size:16px; margin-bottom:6px">New time</div>
+          <div class="info" style="margin:0">
+            <div class="line"><b>Meeting</b> <span id="rs2Title">Virtual 1-1 Connect</span></div>
+            <div class="line"><b>Selected</b> <span id="rs2When">—</span></div>
+            <div class="line"><b>Time zone</b> <span id="rs2Tz">America/New_York</span></div>
+          </div>
+        </div>
+
+        <div class="form">
+        
+          <div>
+            <label>Note to host (optional)</label>
+            <textarea class="field" id="rsNote" placeholder="Anything you’d like to share? (optional)"></textarea>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary wide" id="rsConfirmBtn">Confirm Reschedule</button>
+          <button class="btn outline-blue" data-go="resched_01">Back</button>
+        </div>
+      </section>
+
+      <!-- Reschedule - done -->
+      <section class="screen" data-screen="resched_done">
+        <div class="successMark">✓</div>
+        <div class="h1">Rescheduled</div>
+        <p class="sub">You’re all set. The host has been notified and the calendar has been updated.</p>
+
+        <div class="card" style="padding:14px">
+          <div style="font-weight:700; font-size:16px; margin-bottom:6px">Updated meeting</div>
+          <div class="info" style="margin:0">
+            <div class="line"><b>When</b> <span id="rsDoneWhen">—</span></div>
+            <div class="line"><b>Meeting</b> <span id="rsDoneTitle">Virtual 1-1 Connect</span></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary wide" id="doneBtn">Done</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * MOCK DATA (swap these)
+     ***********************/
+    const state = {
+      hostName: "Pete Romano",
+      meetingTitle: "Virtual 1-1 Connect",
+      timeZone: "America/New_York",
+      currentWhenText: "Thu, Feb 19 • 10:15 AM",
+      selectedDate: null,
+      selectedTime: null,
+      selectedWhenText: null
+    };
+
+    /***********************
+     * SCREEN NAV
+     ***********************/
+    const screens = Array.from(document.querySelectorAll(".screen"));
+    const backBtn = document.getElementById("backBtn");
+    const hostNameEl = document.getElementById("hostName");
+    hostNameEl.textContent = state.hostName;
+
+    // Start on resched_01 (no intro screen)
+    const historyStack = ["resched_01"];
+
+    function show(screenId, pushHistory=true){
+      screens.forEach(s => s.classList.toggle("active", s.dataset.screen === screenId));
+      if(pushHistory){
+        const last = historyStack[historyStack.length - 1];
+        if(last !== screenId) historyStack.push(screenId);
+      }
+      // Hide back button on first screen only
+      backBtn.style.visibility = (screenId === "resched_01") ? "hidden" : "visible";
+    }
+
+    backBtn.addEventListener("click", () => {
+      if(historyStack.length <= 1) return;
+      historyStack.pop();
+      const prev = historyStack[historyStack.length - 1] || "resched_01";
+      show(prev, false);
+    });
+
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-go]");
+      if(!btn) return;
+      const target = btn.getAttribute("data-go");
+      show(target);
+    });
+
+    /***********************
+     * WIRE UP TEXT
+     ***********************/
+    document.getElementById("rsTitle").textContent = state.meetingTitle;
+    document.getElementById("rsCurrent").textContent = state.currentWhenText;
+    document.getElementById("rsTz").textContent = state.timeZone;
+
+    /***********************
+     * RESCHEDULE FLOW:
+     * Lightweight calendar + times
+     ***********************/
+    const monthLabel = document.getElementById("monthLabel");
+    const daysGrid = document.getElementById("daysGrid");
+    const timesGrid = document.getElementById("timesGrid");
+    const selectedDateLabel = document.getElementById("selectedDateLabel");
+    const rsNextBtn = document.getElementById("rsNextBtn");
+
+    // Simple month model (start on Feb 2026 like your screenshot)
+    let viewYear = 2026;
+    let viewMonth = 1; // 0=Jan, 1=Feb
+
+    const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+    // Mock available times (swap with API result)
+    const availableTimes = [
+      "09:00 AM","09:15 AM","09:30 AM",
+      "09:45 AM","10:00 AM","10:15 AM",
+      "10:30 AM","10:45 AM","11:00 AM",
+      "11:15 AM","11:30 AM","11:45 AM",
+      "12:00 PM","12:15 PM","12:30 PM",
+      "12:45 PM","01:00 PM","01:15 PM",
+      "01:30 PM","01:45 PM","02:00 PM",
+      "02:15 PM","02:30 PM","02:45 PM",
+      "03:00 PM","03:15 PM","03:30 PM",
+      "03:45 PM","04:45 PM"
+    ];
+
+    function fmtMonthYear(y, m){
+      return `${monthNames[m]} ${y}`;
+    }
+    function firstDayOfMonth(y, m){
+      return new Date(y, m, 1).getDay(); // 0-6
+    }
+    function daysInMonth(y, m){
+      return new Date(y, m + 1, 0).getDate();
+    }
+
+    function renderCalendar(){
+      monthLabel.textContent = fmtMonthYear(viewYear, viewMonth);
+      daysGrid.innerHTML = "";
+
+      const firstDow = firstDayOfMonth(viewYear, viewMonth);
+      const dim = daysInMonth(viewYear, viewMonth);
+
+      // leading blanks
+      for(let i=0; i<firstDow; i++){
+        const d = document.createElement("div");
+        d.className = "day muted";
+        d.textContent = "";
+        daysGrid.appendChild(d);
+      }
+
+      // days
+      for(let day=1; day<=dim; day++){
+        const d = document.createElement("div");
+        d.className = "day";
+        d.textContent = day;
+
+        // mimic availability like your screenshot
+        const dateObj = new Date(viewYear, viewMonth, day);
+        const dow = dateObj.getDay();
+        const isWeekend = (dow === 0 || dow === 6);
+        const isPastLike = (viewYear === 2026 && viewMonth === 1 && day < 12);
+        const disabled = isWeekend || isPastLike;
+
+        if(disabled){
+          d.classList.add("muted");
+        }else{
+          d.addEventListener("click", () => selectDate(viewYear, viewMonth, day));
+        }
+
+        // keep selection visible
+        if(state.selectedDate){
+          const {y,m,day:sd} = state.selectedDate;
+          if(y===viewYear && m===viewMonth && sd===day) d.classList.add("selected");
+        }
+
+        daysGrid.appendChild(d);
+      }
+
+      renderTimes();
+    }
+
+    function renderTimes(){
+  timesGrid.innerHTML = "";
+  const hasDate = !!state.selectedDate;
+
+  // Show/hide times UI
+  const timesHead = document.getElementById("timesHead");
+  if(!hasDate){
+    if(timesHead) timesHead.style.display = "none";
+    timesGrid.style.display = "none";
+    selectedDateLabel.textContent = "—";
+    updateNext();
+    return;
+  }
+
+  if(timesHead) timesHead.style.display = "flex";
+  timesGrid.style.display = "grid";
+  selectedDateLabel.textContent = formatSelectedDate(state.selectedDate);
+
+  // Render times only after a date is selected
+  availableTimes.slice(0, 18).forEach((t) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "time";
+    b.textContent = t;
+
+    b.addEventListener("click", () => selectTime(t));
+    if(state.selectedTime === t) b.classList.add("selected");
+
+    timesGrid.appendChild(b);
+  });
+
+  updateNext();
+}
+
+
+    function formatSelectedDate(sel){
+      const d = new Date(sel.y, sel.m, sel.day);
+      const dow = DOW[d.getDay()];
+      return `${dow}, ${monthNames[sel.m]} ${sel.day}, ${sel.y}`;
+    }
+
+    function selectDate(y, m, day){
+      state.selectedDate = {y,m,day};
+      state.selectedTime = null;
+      state.selectedWhenText = null;
+      renderCalendar();
+    }
+
+    function selectTime(t){
+      state.selectedTime = t;
+      state.selectedWhenText = `${formatSelectedDate(state.selectedDate)} • ${t}`;
+      renderTimes();
+    }
+
+    function updateNext(){
+      const ready = !!(state.selectedDate && state.selectedTime);
+      rsNextBtn.disabled = !ready;
+      rsNextBtn.style.opacity = ready ? "1" : ".55";
+    }
+
+    document.getElementById("prevMonthBtn").addEventListener("click", () => {
+      viewMonth -= 1;
+      if(viewMonth < 0){ viewMonth = 11; viewYear -= 1; }
+      renderCalendar();
+    });
+
+    document.getElementById("nextMonthBtn").addEventListener("click", () => {
+      viewMonth += 1;
+      if(viewMonth > 11){ viewMonth = 0; viewYear += 1; }
+      renderCalendar();
+    });
+
+    rsNextBtn.addEventListener("click", () => {
+      if(!(state.selectedDate && state.selectedTime)) return;
+
+      document.getElementById("rs2Title").textContent = state.meetingTitle;
+      document.getElementById("rs2When").textContent = state.selectedWhenText;
+      document.getElementById("rs2Tz").textContent = state.timeZone;
+
+      show("resched_02");
+    });
+
+    document.getElementById("rsConfirmBtn").addEventListener("click", () => {
+
+
+      document.getElementById("rsDoneWhen").textContent = state.selectedWhenText;
+      document.getElementById("rsDoneTitle").textContent = state.meetingTitle;
+      show("resched_done");
+    });
+
+    /***********************
+     * DONE (mock exit)
+     ***********************/
+    function done(){
+      alert("Done (mock). Hook this to close modal / redirect.");
+    }
+    document.getElementById("doneBtn0").addEventListener("click", done);
+    document.getElementById("doneBtn").addEventListener("click", done);
+
+    /***********************
+     * INITIAL RENDER
+     ***********************/
+    renderCalendar();
+    backBtn.style.visibility = "hidden";
+  </script>
+</body>
+</html>
